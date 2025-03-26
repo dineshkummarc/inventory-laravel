@@ -186,6 +186,41 @@
         .badge{
             color:#fff!important;
         }
+    /* Estilos específicos para el logout */
+    .navbar-footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        margin-top: auto;
+        padding-top: 1rem;
+    }
+
+    .logout-link {
+        color: rgba(255, 255, 255, 0.6) !important;
+        transition: all 0.2s ease;
+    }
+
+    .logout-link:hover {
+        color: rgba(255, 255, 255, 0.9) !important;
+        background: transparent !important;
+        transform: none !important;
+    }
+
+    .logout-link .nav-link-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .logout-link:hover .nav-link-icon {
+        transform: translateX(2px);
+    }
+
+    /* Eliminar efectos del menú principal */
+    .logout-item .nav-link {
+        border-radius: 6px;
+        margin: 0 0.5rem;
+    }
+
+    .logout-item .nav-link:hover {
+       /* background: rgba(255, 255, 255, 0.03) !important;*/
+    }
     </style>
 </head>
 <body class="border-top-wide border-primary d-flex flex-column">
@@ -245,7 +280,26 @@
                         </a>
                     </li>
                 </ul>
+                
             </div>
+            <div class="navbar-footer mt-auto pb-3">
+            <ul class="navbar-nav">
+                <li class="nav-item logout-item">
+                    <a class="nav-link logout-link" href="{{ route('logout') }}"
+                       onclick="event.preventDefault();
+                            document.getElementById('logout-form').submit();">
+                        <span class="nav-link-icon">
+                            <i class="bi bi-box-arrow-right"></i>
+                        </span>
+                        <span class="nav-link-title">Cerrar Sesión</span>
+                    </a>
+                    
+                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                        @csrf
+                    </form>
+                </li>
+            </ul>
+        </div>
         </div>
     </aside>
 

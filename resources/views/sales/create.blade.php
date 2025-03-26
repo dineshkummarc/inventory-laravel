@@ -4,7 +4,7 @@
 
 @section('content')
 <style>
-    :root {
+      :root {
         --primary-color: #45247b;
         --primary-light: #6d4a9e;
         --primary-dark: #2e1957;
@@ -122,33 +122,37 @@
 </style>
 
 <div class="card">
-<div class="card-header d-flex justify-content-between align-items-center">
-    <h3 class="card-title mb-0">
-        <i class="bi bi-cart-plus me-2"></i>Nueva Venta
-    </h3>
-    <a href="{{ route('sales.index') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i> Volver al listado
-    </a>
-</div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0">
+            <i class="bi bi-cart-plus me-2"></i>Nueva Venta
+        </h3>
+        <a href="{{ route('sales.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Volver al listado
+        </a>
+    </div>
 
     <div class="card-body">
         <form id="saleForm" method="POST" action="{{ route('sales.store') }}">
             @csrf
             
             <div class="row g-3">
+            <div class="col-md-6">
+    <div class="mb-4">
+        <label class="form-label">Cliente (Opcional)</label>
+        <select name="client_id" class="form-control">
+            <option value="">-- Seleccione un cliente --</option>
+            @foreach($clients as $client)
+                <option value="{{ $client->id }}">{{ $client->name }}</option>
+            @endforeach
+        </select>
+    </div>
+</div>
+                
                 <div class="col-md-6">
                     <div class="mb-4">
                         <label class="form-label required">Fecha y Hora</label>
                         <input type="datetime-local" class="form-control" 
-                               name="sale_date" value="{{ now()->format('Y-m-d\TH:i') }}" required>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="mb-4">
-                        <label class="form-label required">Cliente</label>
-                        <input type="text" class="form-control" 
-                               name="customer_name" required>
+                               name="created_at" value="{{ now()->format('Y-m-d\TH:i') }}" required>
                     </div>
                 </div>
             </div>
@@ -161,7 +165,7 @@
                             <select class="form-select product-select">
                                 <option value="">Seleccionar Producto</option>
                                 @foreach($products as $product)
-                                <option value="{{ $product->id }}" 
+                                <option value="{{ $product->id}}" 
                                     data-price="{{ $product->price }}"
                                     data-stock="{{ $product->stock }}">
                                     {{ $product->name }} (Stock: {{ $product->stock }})
@@ -223,64 +227,67 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Script cargado'); // Verificar carga del script
-    
     const items = [];
     const addButton = document.querySelector('.add-item');
     const productSelect = document.querySelector('.product-select');
     const quantityInput = document.querySelector('.quantity');
 
-    console.log('Elementos:', {addButton, productSelect, quantityInput}); // Verificar selección de elementos
-
     function updateGrandTotal() {
         const total = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-        document.getElementById('grandTotal').textContent = `$${total.toLocaleString()}`;
+        document.getElementById('grandTotal').textContent = `$${total.toFixed(2)}`;
     }
 
     function addItemToTable(product) {
-        console.log('Agregando producto:', product); // Depurar producto
         const tbody = document.querySelector('#itemsTable tbody');
         
-        // Verificar si el producto ya existe
+        // Verificar stock disponible
+        const productStock = parseInt(productSelect.querySelector(`option[value="${product.id}"]`).dataset.stock);
         const existingItem = items.find(item => item.id === product.id);
+        const totalQuantity = existingItem ? existingItem.quantity + product.quantity : product.quantity;
+        
+        if (totalQuantity > productStock) {
+            alert(`Stock insuficiente para ${product.name}. Disponible: ${productStock}`);
+            return;
+        }
+
         if (existingItem) {
-            console.log('Producto existente, actualizando cantidad'); 
             existingItem.quantity += product.quantity;
             const row = document.querySelector(`tr[data-product-id="${product.id}"]`);
-            row.querySelector('td:nth-child(2)').textContent = existingItem.quantity;
-            row.querySelector('.item-total').textContent = `$${(existingItem.quantity * existingItem.price).toLocaleString()}`;
+            row.querySelector('.item-quantity').textContent = existingItem.quantity;
+            row.querySelector('.item-total').textContent = `$${(existingItem.quantity * existingItem.price).toFixed(2)}`;
+            row.querySelector('input[name="quantities[]"]').value = existingItem.quantity;
         } else {
-            console.log('Nuevo producto, creando fila');
             const tr = document.createElement('tr');
             tr.dataset.productId = product.id;
             tr.innerHTML = `
                 <td>${product.name}</td>
-                <td>${product.quantity}</td>
-                <td>$${product.price.toLocaleString()}</td>
-                <td class="item-total">$${(product.quantity * product.price).toLocaleString()}</td>
+                <td class="item-quantity">${product.quantity}</td>
+                <td>$${product.price.toFixed(2)}</td>
+                <td class="item-total">$${(product.quantity * product.price).toFixed(2)}</td>
                 <td>
                     <button type="button" class="btn btn-danger btn-sm remove-item">
                         <i class="bi bi-trash"></i>
                     </button>
-                    <input type="hidden" name="items[${items.length}][product_id]" value="${product.id}">
-                    <input type="hidden" name="items[${items.length}][quantity]" value="${product.quantity}">
+                    <input type="hidden" name="products[]" value="${product.id}">
+                    <input type="hidden" name="quantities[]" value="${product.quantity}">
                 </td>
             `;
             tbody.appendChild(tr);
 
             tr.querySelector('.remove-item').addEventListener('click', function() {
-                console.log('Eliminando producto:', product.id);
                 const index = items.findIndex(item => item.id === product.id);
                 items.splice(index, 1);
                 tr.remove();
                 updateGrandTotal();
             });
+            
+            items.push(product);
         }
+        
         updateGrandTotal();
     }
 
     addButton.addEventListener('click', function() {
-        console.log('Botón clickeado'); // Verificar evento click
         const selectedOption = productSelect.options[productSelect.selectedIndex];
         
         if (!selectedOption.value || !quantityInput.value) {
@@ -288,37 +295,23 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        console.log('Opción seleccionada:', selectedOption);
-        
         const product = {
             id: selectedOption.value,
             name: selectedOption.text.split(' (')[0],
             price: parseFloat(selectedOption.dataset.price),
-            quantity: parseInt(quantityInput.value),
-            stock: parseInt(selectedOption.dataset.stock)
+            quantity: parseInt(quantityInput.value)
         };
 
-        console.log('Producto parseado:', product); // Verificar datos del producto
-
-        if (product.quantity > product.stock) {
-            alert(`Stock insuficiente. Disponible: ${product.stock}`);
-            return;
-        }
-
-        // Actualizar o agregar item
-        const existingIndex = items.findIndex(item => item.id === product.id);
-        if (existingIndex > -1) {
-            items[existingIndex].quantity += product.quantity;
-        } else {
-            items.push(product);
-        }
-
         addItemToTable(product);
+        
+        // Actualizar stock visualmente
+        const currentStock = parseInt(selectedOption.dataset.stock);
+        selectedOption.dataset.stock = currentStock - product.quantity;
+        selectedOption.text = `${product.name} (Stock: ${currentStock - product.quantity})`;
         
         // Reset campos
         productSelect.value = '';
         quantityInput.value = 1;
-        productSelect.focus();
     });
 
     document.getElementById('saleForm').addEventListener('submit', function(e) {

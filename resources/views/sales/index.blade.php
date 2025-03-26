@@ -155,7 +155,7 @@
                 <tbody>
                     @foreach($sales as $sale)
                     <tr>
-                        <td>{{ $sale->sale_date->format('d/m/Y H:i') }}</td>
+                        <td></td>
                         <td>{{ $sale->customer_name }}</td>
                         <td>${{ number_format($sale->total, 0, ',', '.') }}</td>
                         <td>

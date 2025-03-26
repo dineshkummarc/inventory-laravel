@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-// Importaciones necesarias
 use App\Models\Sale;
 use App\Models\Product;
+use App\Models\Client; // Asegúrate de importar el modelo Client
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +22,7 @@ class SaleController extends Controller
         $products = Product::all();
         return view('sales.create', compact('products'));
     }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -32,26 +33,20 @@ class SaleController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'notes' => 'nullable|string'
         ]);
-    
+
         DB::beginTransaction();
         try {
             $sale = Sale::create([
                 'sale_date' => $validated['sale_date'],
                 'customer_name' => $validated['customer_name'],
-                'total' => 0,
-                'notes' => $validated['notes'] ?? null,
+                'total' => 0, // Calcularemos el total después
+                'notes' => $validated['notes'],
                 'user_id' => auth()->id()
             ]);
-    
+
             $total = 0;
             foreach ($request->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                
-                // Verificar stock nuevamente por seguridad
-                if ($item['quantity'] > $product->stock) {
-                    throw new \Exception("Stock insuficiente para {$product->name}");
-                }
-                
+                $product = Product::find($item['product_id']);
                 $saleItem = $sale->items()->create([
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
@@ -61,23 +56,20 @@ class SaleController extends Controller
                 $total += $saleItem->quantity * $saleItem->unit_price;
                 $product->decrement('stock', $item['quantity']);
             }
-    
+
             $sale->update(['total' => $total]);
             
             DB::commit();
             return redirect()->route('sales.index')->with('success', 'Venta registrada correctamente');
-    
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al registrar la venta: ' . $e->getMessage());
         }
     }
 
     public function show(Sale $sale)
     {
-        $sale->load(['items.product', 'user']);
         return view('sales.show', compact('sale'));
     }
 
@@ -87,9 +79,7 @@ class SaleController extends Controller
         try {
             foreach ($sale->items as $item) {
                 $product = Product::find($item->product_id);
-                if($product) {
-                    $product->increment('stock', $item->quantity);
-                }
+                $product->increment('stock', $item->quantity);
             }
             
             $sale->delete();
@@ -99,8 +89,7 @@ class SaleController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()
-                ->with('error', 'Error al eliminar la venta: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al eliminar la venta: ' . $e->getMessage());
         }
     }
 }
